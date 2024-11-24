@@ -1,9 +1,17 @@
 "use server";
 import prisma from "@/lib/db";
 import { hash } from "bcryptjs";
+import { AuthError } from "next-auth";
+import { signIn } from "@/auth";
 
 type SignUpResponse =
-  | { id: string; username: string; email: string; password: string; createdAt: Date }
+  | {
+      id: string;
+      username: string;
+      email: string;
+      password: string;
+      createdAt: Date;
+    }
   | { error: string };
 
 export const handleSignUp = async (
@@ -34,5 +42,36 @@ export const handleSignUp = async (
   } catch (error) {
     console.error("Error in handleSignUp:", error);
     return { error: "An error occurred during sign up" };
+  }
+};
+
+export const handleSignIn = async (email: string,password:string) => {
+  if (!email || !password) {
+    return { error: "All fields required" };
+  }
+  try {
+    const result = await signIn("credentials", {
+      email,
+      password,
+      redirect: false,
+    });
+    console.log(result)
+
+    if (result?.error) {
+      return { error: "Invalid credentials" };
+    }
+
+    return { success: true };
+
+  } catch (error) {
+    if (error instanceof AuthError) {
+      switch (error.type) {
+        case "CredentialsSignin":
+          return { error: "Invalid credentials" };
+        default:
+          return { error: "Something went wrong" };
+      }
+    }
+    return { error: "An unexpected error occurred" };
   }
 };
